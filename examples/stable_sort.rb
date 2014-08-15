@@ -35,7 +35,25 @@ class BoxedFixNumArgDescriptor
     end
 
     def shrink(list, tactic)
-      :tried_all_tactics
+      size = list.size
+      if size < 2
+        puts "#shrink .. dead end"
+        return :dead_end 
+      end
+      case tactic
+      when 0
+        return list[0..size/2]
+      when 1
+        return list[size/2..-1]
+      when 2
+        return list[1..-1]
+      when 3
+        return list[0..-2]
+      when 4
+        return list[0..-2]
+      end
+
+      return :tried_all_tactics
     end
 
     def b(n)
@@ -45,7 +63,16 @@ class BoxedFixNumArgDescriptor
 end
 
 class Sorter
+  def self.sort(items)
+    unstable items
+    # stable items
+  end
+
   def self.stable(items)
+    items.sort_by.with_index { |x, idx| [x, idx] }
+  end
+
+  def self.unstable(items)
     items.sort
   end
 end
@@ -53,17 +80,30 @@ end
 t = Theft::Runner.new autosize: true
 
 property_sorting_should_be_stable = lambda do |generated_arg| # , other_generated_arg, etc 
-  sorted = Sorter.stable(generated_arg)
+  sorted = Sorter.sort(generated_arg)
 
-  # fail if even
-  sorted.size % 2 == 0 ? :fail : :pass
+  sorted.chunk{|item| item.n}.each do |n, items|
+    if items.size > 1
+      # lazily spot check
+      first = items.first
+      last = items.last
+
+      if generated_arg.index(first) > generated_arg.index(last)
+        return :fail unless sorted.index(first) > sorted.index(last)
+      else
+        return :fail unless sorted.index(first) < sorted.index(last)
+      end
+    end
+  end
+
+  :pass
 end
 
 config = {
   description: "sorting should be stable",
   property: property_sorting_should_be_stable,
   arg_descriptors: [BoxedFixNumArgDescriptor],
-  trials: 60,
+  trials: 3,
   # must_have_seeds: [],
   # seed: nil,
   progress: lambda{|trial_num, args, status| STDOUT.write '.' if trial_num % 2 == 0 },
@@ -71,12 +111,3 @@ config = {
 }
 
 t.run config
-
-
-# FOR EACH ARGUMENT TO THE FUNCTION UNDER TEST
-  # setup - returns instance of TheftInput
-  # teardown - cleanup (prob not needed)
-  # hash - same input should hash the same regardless of object identity
-  # print - print out the inputs when they fail
-  # shrink - find subset of failing input (cut array in half, pop off the end, etc)
-

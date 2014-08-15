@@ -4,7 +4,7 @@ require 'set'
 module Theft
   class Runner
     def initialize(args={})
-      @auto_size = true
+      @auto_size = args.has_key?(:auto_size) ? args[:auto_size] : true
       @evaluated_inputs = Set.new
     end
 
@@ -32,13 +32,18 @@ module Theft
           when :fail
             fails += 1
 
-            args = try_to_shrink(args, property)
-
             puts "failed on trial: #{trial_num}"
             @descriptors.each.with_index do |desc, i|
               puts desc.to_s(args[i])
             end
-          when :passes
+
+            args = try_to_shrink(args, property)
+
+            puts "shrunk to"
+            @descriptors.each.with_index do |desc, i|
+              puts desc.to_s(args[i])
+            end
+          when :pass
             passes += 1
           end
 
@@ -52,7 +57,28 @@ module Theft
     end
 
     def try_to_shrink(args, property)
-      # until :tried_all_tactics ...
+
+      @descriptors.each.with_index do |desc, i|
+        tactic_counter = 0
+
+        shrink_result = desc.shrink(args[i], tactic_counter) 
+        while shrink_result != :tried_all_tactics
+          if shrink_result == :dead_end
+            tactic_counter += 1
+          else
+            copy_args = args.dup
+            copy_args[i] = shrink_result
+            result = property.call(*copy_args)
+            if result == :fail
+              args[i] = shrink_result 
+            else
+              tactic_counter += 1
+            end
+          end
+          shrink_result = desc.shrink(args[i], tactic_counter) 
+        end
+      end
+
       args
     end
 
