@@ -17,7 +17,7 @@ class BoxedFixNumArgDescriptor
     def setup(rng, args={})
       [].tap do |ar|
         rng.rand(0..100).times do |i|
-          ar << b(rng.rand(0..2000))
+          ar << b(rng.rand(0..100))
         end
       end
     end
@@ -50,7 +50,8 @@ class BoxedFixNumArgDescriptor
       when 3
         return list[0..-2]
       when 4
-        return list[0..-2]
+        mid = size/2
+        return list[0..mid-1] + list[mid+1..-1]
       end
 
       return :tried_all_tactics
@@ -77,37 +78,39 @@ class Sorter
   end
 end
 
-t = Theft::Runner.new autosize: true
+if $0 == __FILE__
+  t = Theft::Runner.new autosize: true
 
-property_sorting_should_be_stable = lambda do |generated_arg| # , other_generated_arg, etc 
-  sorted = Sorter.sort(generated_arg)
+  property_sorting_should_be_stable = lambda do |generated_arg| # , other_generated_arg, etc 
+    sorted = Sorter.sort(generated_arg)
 
-  sorted.chunk{|item| item.n}.each do |n, items|
-    if items.size > 1
-      # lazily spot check
-      first = items.first
-      last = items.last
+    sorted.chunk{|item| item.n}.each do |n, items|
+      if items.size > 1
+        # lazily spot check
+        first = items.first
+        last = items.last
 
-      if generated_arg.index(first) > generated_arg.index(last)
-        return :fail unless sorted.index(first) > sorted.index(last)
-      else
-        return :fail unless sorted.index(first) < sorted.index(last)
+        if generated_arg.index(first) > generated_arg.index(last)
+          return :fail unless sorted.index(first) > sorted.index(last)
+        else
+          return :fail unless sorted.index(first) < sorted.index(last)
+        end
       end
     end
+
+    :pass
   end
 
-  :pass
+  config = {
+    description: "sorting should be stable",
+    property: property_sorting_should_be_stable,
+    arg_descriptors: [BoxedFixNumArgDescriptor],
+    trials: 3,
+    # must_have_seeds: [],
+  #  seed: 1408486348,
+    progress: lambda{|trial_num, args, status| STDOUT.write '.' if trial_num % 2 == 0 },
+    env: :whatevs
+  }
+
+  t.run config
 end
-
-config = {
-  description: "sorting should be stable",
-  property: property_sorting_should_be_stable,
-  arg_descriptors: [BoxedFixNumArgDescriptor],
-  trials: 3,
-  # must_have_seeds: [],
-  # seed: nil,
-  progress: lambda{|trial_num, args, status| STDOUT.write '.' if trial_num % 2 == 0 },
-  env: :whatevs
-}
-
-t.run config

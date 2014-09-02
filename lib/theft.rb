@@ -32,14 +32,9 @@ module Theft
           when :fail
             fails += 1
 
-            puts "failed on trial: #{trial_num}"
-            @descriptors.each.with_index do |desc, i|
-              puts desc.to_s(args[i])
-            end
-
             args = try_to_shrink(args, property)
 
-            puts "shrunk to"
+            puts "failed on trial: #{trial_num}"
             @descriptors.each.with_index do |desc, i|
               puts desc.to_s(args[i])
             end
@@ -63,6 +58,7 @@ module Theft
 
         shrink_result = desc.shrink(args[i], tactic_counter) 
         while shrink_result != :tried_all_tactics
+          #puts desc.to_s(args[i])
           if shrink_result == :dead_end
             tactic_counter += 1
           else
